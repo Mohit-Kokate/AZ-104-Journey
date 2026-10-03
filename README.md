@@ -1,28 +1,15 @@
-## 🌐 Project 1: Enterprise Hub-Spoke Network Topology (IaC & CI/CD)
+## 🌐 Project 1: Enterprise Hub-Spoke Network Topology
 
 ### 📊 Network Traffic Detour Path
 This layout isolates your workloads. Instead of a direct shortcut (bypass) between Production (A) and Data (C), your code forces all data packets to take an enforced detour through the security checkpoint in the Hub (B).
 
 ```mermaid
 graph TD
-    A[A: Production Subnet] --->|1. Enforced Detour via UDR| B(B: Central Hub Router IP 10.0.1.4)
-    B --->|2. Approved Traffic Delivery| C[C: Private Data Subnet]
+    A[A: Production Subnet - 10.1.1.0/24] --->|1. Enforced Detour via UDR| B(B: Central Hub Router - 10.0.1.4)
+    B --->|2. Approved Traffic Delivery| C[C: Private Data Subnet - 10.2.1.0/24]
 
-    A <.-.-> |VNet Peering| B
-    C <.-.-> |VNet Peering| B
-```
-
-### 🤖 Automated CI/CD Pipeline Diagram
-Every code commit triggers an automated compilation pipeline that validates the infrastructure layout for free without logging into an Azure account.
-
-```mermaid
-graph LR
-    Commit(1. Code Commit) ---> VM(2. GitHub Actions Runner)
-    VM ---> Install(3. Install Bicep CLI)
-    Install ---> Test(4. Run Build Check)
-    Test ---> Result{Code Check}
-    Result --->|Typo Found| Red[❌ Build Failed]
-    Result --->|Perfect| Green[✅ Build Passed]
+    A <.-.-> |VNet Peering: allowForwardedTraffic| B
+    C <.-.-> |VNet Peering: allowForwardedTraffic| B
 ```
 
 ### 🧠 Core Architectural Strategy Explained
