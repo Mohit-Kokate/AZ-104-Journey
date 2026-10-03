@@ -1,95 +1,126 @@
 param location string = resourceGroup().location
-param uniqueStorageName string = 'securestore${uniqueString(resourceGroup().id)}'
 
-// 1. Create a Virtual Network to host our secure resources
-resource vnet 'Microsoft.Network/virtualNetworks@2023-11-01' = {
-  name: 'VNet-SecureStorage'
+// 1. Define Hub VNet
+resource hubVnet 'Microsoft.Network/virtualNetworks@2023-11-01' = {
+  name: 'VNet-Hub'
   location: location
   properties: {
     addressSpace: {
-      addressPrefixes: ['172.16.0.0/16']
+      addressPrefixes: ['10.0.0.0/16']
     }
     subnets: [
       {
-        name: 'PrivateEndpoint-Subnet'
+        name: 'NVA-Subnet'
         properties: {
-          addressPrefix: '172.16.1.0/24'
-          privateEndpointNetworkPolicies: 'Disabled' // Required for private endpoints
+          addressPrefix: '10.0.1.0/24'
         }
       }
     ]
   }
 }
 
-// 2. Create the Storage Account with zero public access & Local Redundancy (Cost Effective)
-resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
-  name: uniqueStorageName
-  location: location
-  sku: {
-    name: 'Standard_LRS'
-  }
-  kind: 'StorageV2'
-  properties: {
-    publicNetworkAccess: 'Disabled' // Blocks all public internet traffic
-    allowBlobPublicAccess: false
-    networkAcls: {
-      defaultAction: 'Deny'
-      bypass: 'None'
-    }
-  }
-}
-
-// 3. Create a Private DNS Zone for Azure Blob Storage resolution
-resource privateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = {
-  name: 'privatelink.blob.core.windows.net'
-  location: 'global'
-}
-
-// 4. Link the Private DNS Zone directly to our Virtual Network
-resource dnsVnetLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = {
-  parent: privateDnsZone
-  name: 'link-to-storage-vnet'
-  location: 'global'
-  properties: {
-    registrationEnabled: false
-    virtualNetwork: {
-      id: vnet.id
-    }
-  }
-}
-
-// 5. Establish the Private Endpoint for the Blob service inside our VNet Subnet
-resource privateEndpoint 'Microsoft.Network/privateEndpoints@2023-11-01' = {
-  name: 'PE-SecureBlobStorage'
+// 2. Define Spoke Production VNet
+resource prodVnet 'Microsoft.Network/virtualNetworks@2023-11-01' = {
+  name: 'VNet-Spoke-Prod'
   location: location
   properties: {
-    subnet: {
-      id: vnet.subnets[0].id
+    addressSpace: {
+      addressPrefixes: ['10.1.0.0/16']
     }
-    privateLinkServiceConnections: [
+    subnets: [
       {
-        name: 'conn-to-blob-storage'
+        name: 'App-Subnet'
         properties: {
-          privateLinkServiceId: storageAccount.id
-          groupIds: [
-            'blob' // Specifies we want to isolate blob traffic
-          ]
+          addressPrefix: '10.1.1.0/24'
         }
       }
     ]
   }
 }
 
-// 6. Connect the Private Endpoint to our Private DNS Zone for automatic IP mapping
-resource privateEndpointDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2023-11-01' = {
-  parent: privateEndpoint
-  name: 'default'
+// 3. Define Spoke Data VNet
+resource dataVnet 'Microsoft.Network/virtualNetworks@2023-11-01' = {
+  name: 'VNet-Spoke-Data'
+  location: location
   properties: {
-    privateDnsZoneConfigs: [
+    addressSpace: {
+      addressPrefixes: ['10.2.0.0/16']
+    }
+    subnets: [
       {
-        name: 'config1'
+        name: 'Database-Subnet'
         properties: {
-          privateDnsZoneId: privateDnsZone.id
+          addressPrefix: '10.2.1.0/24'
+        }
+      }
+    ]
+  }
+}
+
+// 4. VNet Peering: Hub to Prod
+resource hubToProd 'Microsoft.Network/virtualNetworks/virtualNetworkPeerings@2023-11-01' = {
+  parent: hubVnet
+  name: 'Hub-to-SpokeProd'
+  properties: {
+    allowVirtualNetworkAccess: true
+    allowForwardedTraffic: true
+    remoteVirtualNetwork: {
+      id: prodVnet.id
+    }
+  }
+}
+
+// 5. VNet Peering: Prod to Hub
+resource prodToHub 'Microsoft.Network/virtualNetworks/virtualNetworkPeerings@2023-11-01' = {
+  parent: prodVnet
+  name: 'SpokeProd-to-Hub'
+  properties: {
+    allowVirtualNetworkAccess: true
+    allowForwardedTraffic: true
+    remoteVirtualNetwork: {
+      id: hubVnet.id
+    }
+  }
+}
+
+// 6. VNet Peering: Hub to Data
+resource hubToData 'Microsoft.Network/virtualNetworks/virtualNetworkPeerings@2023-11-01' = {
+  parent: hubVnet
+  name: 'Hub-to-SpokeData'
+  properties: {
+    allowVirtualNetworkAccess: true
+    allowForwardedTraffic: true
+    remoteVirtualNetwork: {
+      id: dataVnet.id
+    }
+  }
+}
+
+// 7. VNet Peering: Data to Hub
+resource dataToHub 'Microsoft.Network/virtualNetworks/virtualNetworkPeerings@2023-11-01' = {
+  parent: dataVnet
+  name: 'SpokeData-to-Hub'
+  properties: {
+    allowVirtualNetworkAccess: true
+    allowForwardedTraffic: true
+    remoteVirtualNetwork: {
+      id: hubVnet.id
+    }
+  }
+}
+
+// 8. Custom Routing Table (UDR) to force traffic through the Hub
+resource routeTableProd 'Microsoft.Network/routeTables@2023-11-01' = {
+  name: 'RT-SpokeProd-to-Hub'
+  location: location
+  properties: {
+    routes: [
+      {
+        name: 'Route-To-Data-Via-Hub'
+        properties: {
+          addressPrefix: '10.2.0.0/16' // Target Data Spoke
+          nextHopType: 'VirtualAppliance'
+          nextHopIpAddress: '10.0.1.4' // Simulated Firewall/Router IP in Hub
         }
       }
     ]
