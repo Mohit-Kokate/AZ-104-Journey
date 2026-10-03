@@ -1,0 +1,23 @@
+name: Project 2 - Storage Validation Pipeline
+
+on:
+  push:                       # Triggers automatically on every code push
+  workflow_dispatch:          # Enables a manual "Run workflow" button in GitHub
+
+jobs:
+  validate-storage:
+    runs-on: ubuntu-latest
+    steps:
+    # 1. Pull the storage.bicep file from your repository
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    # 2. Setup the official Azure Bicep compiler tools on the runner
+    - name: Install Bicep CLI
+      run: |
+        az bicep install
+
+    # 3. Compile and validate the Storage logic locally (100% FREE & No Login Required)
+    - name: Local Syntax & Linting Check
+      run: |
+        az bicep build --file Project 2/storage.bicep
