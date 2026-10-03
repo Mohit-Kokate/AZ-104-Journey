@@ -20,4 +20,4 @@ jobs:
     # 3. Compile and validate the Bicep network logic locally (100% FREE & No Login Required)
     - name: Local Syntax & Linting Check
       run: |
-        az bicep build --file main.bicep
+        az bicep build --file Project-1-HubSpoke/main.bicep
