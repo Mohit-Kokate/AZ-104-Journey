@@ -20,4 +20,5 @@ jobs:
     # 3. Compile and validate the Storage logic locally (100% FREE & No Login Required)
     - name: Local Syntax & Linting Check
       run: |
-        az bicep build --file Project 2/storage.bicep
+        az bicep build --file 'Project 2 - SecureStorage/storage.bicep'
+
