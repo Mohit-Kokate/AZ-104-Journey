@@ -1,7 +1,5 @@
 ## 🌐 Project 1: Enterprise Hub-Spoke Network Topology
 
-### 📊 Network Traffic Detour Path
-This layout isolates your workloads. Instead of a direct shortcut (bypass) between Production (A) and Data (C), your code forces all data packets to take an enforced detour through the security checkpoint in the Hub (B).
 
 ```mermaid
 graph TD
