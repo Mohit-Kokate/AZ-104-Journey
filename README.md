@@ -1,49 +1,28 @@
 ## 🌐 Project 1: Enterprise Hub-Spoke Network Topology (IaC & CI/CD)
 
-### 📊 Network Architecture Diagram
-This topology isolates your critical workloads. Instead of a direct shortcut (bypass) between the Production App (A) and Private Data (C), all traffic is forced to take a monitored detour through the Central Hub (B).
+### 📊 Network Traffic Detour Path
+This layout isolates your workloads. Instead of a direct shortcut (bypass) between Production (A) and Data (C), your code forces all data packets to take an enforced detour through the security checkpoint in the Hub (B).
 
 ```mermaid
 graph TD
-    subgraph Hub_VNet ["B: Central Hub Network (10.0.0.0/16)"]
-        NVA[Security & Router Subnet: 10.0.1.0/24]
-    end
+    A[A: Production Subnet] --->|1. Enforced Detour via UDR| B(B: Central Hub Router IP 10.0.1.4)
+    B --->|2. Approved Traffic Delivery| C[C: Private Data Subnet]
 
-    subgraph Prod_Spoke ["A: Production Network (10.1.0.0/16)"]
-        App[App Subnet: 10.1.1.0/24]
-    end
-
-    subgraph Data_Spoke ["C: Private Data Network (10.2.0.0/16)"]
-        DB[Database Subnet: 10.2.1.0/24]
-    end
-
-    %% Enforced Traffic Detour Path
-    App ===> |1. Enforced Detour via UDR Table| NVA
-    NVA ===> |2. Approved Traffic Delivery| DB
-
-    %% Peering Relationship Lines
-    NVA <.-.-> |VNet Peering: allowForwardedTraffic| App
-    NVA <.-.-> |VNet Peering: allowForwardedTraffic| DB
-
-    style NVA fill:#f9f,stroke:#333,stroke-width:2px
-    style App fill:#bbf,stroke:#333,stroke-width:1px
-    style DB fill:#bfb,stroke:#333,stroke-width:1px
+    A <.-.-> |VNet Peering| B
+    C <.-.-> |VNet Peering| B
 ```
 
 ### 🤖 Automated CI/CD Pipeline Diagram
-Every code commit triggers an automated, passwordless compilation pipeline that validates the underlying infrastructure block structural layout for free.
+Every code commit triggers an automated compilation pipeline that validates the infrastructure layout for free without logging into an Azure account.
 
 ```mermaid
 graph LR
-    Commit[1. Code Commit] ---> VM[2. GitHub Actions Runner VM]
-    VM ---> Install[3. Install Azure Bicep CLI]
-    Install ---> Test[4. Run Build Check]
-    
-    Test -->|Syntax Errors Found| Red[❌ Build Failed: Alerts Developer]
-    Test -->|Code Is Flawless| Green[✅ Build Passed: Portfolio Updated]
-
-    style Red fill:#ffcccc,stroke:#ff3333,stroke-width:1px
-    style Green fill:#ccffcc,stroke:#33cc33,stroke-width:2px
+    Commit(1. Code Commit) ---> VM(2. GitHub Actions Runner)
+    VM ---> Install(3. Install Bicep CLI)
+    Install ---> Test(4. Run Build Check)
+    Test ---> Result{Code Check}
+    Result --->|Typo Found| Red[❌ Build Failed]
+    Result --->|Perfect| Green[✅ Build Passed]
 ```
 
 ### 🧠 Core Architectural Strategy Explained
