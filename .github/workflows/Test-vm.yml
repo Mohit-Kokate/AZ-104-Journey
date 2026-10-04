@@ -30,4 +30,4 @@ jobs:
     - name: Run Syntax Validation Check
       working-directory:  /workspaces/my-terraform-azure/test-vm.tf  # <--- PASTE TARGET FOLDER PATH HERE
       run: |
-        terraform validate
+        terraform validate 
